@@ -1,0 +1,89 @@
+======================================================================
+1. RAW LOAD SUMMARY
+======================================================================
+answer list (wordle-answers-alphabetical.txt): 2315 clean words, 0 rejected
+allowed-guesses-only list (wordle-allowed-guesses.txt): 10657 clean words, 0 rejected
+past_answers.txt: 1927 clean rows
+
+======================================================================
+2. CROSS-LIST CONSISTENCY CHECKS
+======================================================================
+Overlap between 'answers' and 'allowed-guesses-only' lists: 0 words (expected 0 if the two files are meant to be disjoint partitions)
+Full legal guess vocabulary (union): 12972 words
+Past answers NOT found in the current answer list: 60 ['aloha', 'aspic', 'aster', 'atlas', 'atria', 'balsa', 'beaut', 'beige', 'capon', 'carom']
+  (>0 is expected/known: NYT has retired a handful of answers, e.g. politically or culturally sensitive words, since taking over the game in 2022.)
+
+======================================================================
+3. REMAINING CANDIDATE POOL (the number that actually matters)
+======================================================================
+Total possible answers ever published as a list:  2315
+Already used as of the most recent puzzle in the data: 1842
+REMAINING CANDIDATES for a future puzzle:          473
+Uniform-prior starting entropy over full list:      11.177 bits
+Uniform-prior starting entropy over remaining pool: 8.886 bits
+  -> Building the solver on the full 2,3xx-word list instead of the remaining pool silently overstates the problem's difficulty and is the wrong ground truth for a 'genuine real-world' claim in the report.
+
+======================================================================
+4. STRUCTURAL CHECKS
+======================================================================
+Distinct word lengths present in full vocab: {5} (must be {5})
+Repeated-letter distribution in remaining candidates (0 = all-unique-letters word): {0: 294, 1: 161, 2: 17, 3: 1}
+-> 179/473 remaining candidates (37.8%) contain a repeated letter — relevant because a naive feedback-pattern encoder that ignores duplicate-letter tile-coloring rules will silently mis-score these.
+
+======================================================================
+5. LETTER FREQUENCY (computed on the REMAINING candidate pool)
+======================================================================
+Top 10 most common letters (remaining pool):
+e    232
+a    190
+r    189
+s    161
+i    151
+o    139
+l    137
+t    129
+y    125
+n    113
+
+Most common letter at each position:
+  pos_1: 's' (93 occurrences)
+  pos_2: 'a' (77 occurrences)
+  pos_3: 'i' (63 occurrences)
+  pos_4: 'e' (79 occurrences)
+  pos_5: 'y' (106 occurrences)
+
+Vowel-count distribution per word: {0: 6, 1: 162, 2: 262, 3: 43}
+
+======================================================================
+6. PAST-ANSWERS HISTORY CHECKS
+======================================================================
+Puzzle-ID range: 0–1922 (1923 expected daily puzzles)
+Missing puzzle IDs in the data: 0 []
+Date gap between consecutive rows — should be 1.0 day if no rows are missing: min=0.0, max=1.0, mean=1.00
+Rows with the undocumented trailing '@' marker: 38 (kept as-is — worth footnoting in the report as an unexplained upstream artifact rather than silently dropping them)
+
+Swapped-answer days (two words sharing one puzzle ID, 'a'/'b' suffix): 4 puzzle day(s)
+  puzzle #241 on 2022-02-15: agora(a), aroma(b)
+  puzzle #284 on 2022-03-30: stove(b), harry(a)
+  puzzle #324 on 2022-05-09: fetus(a), shine(b)
+  puzzle #325 on 2022-05-10: butch(a), gecko(b)
+  -> Documented case of NYT replacing an already-scheduled answer shortly after acquiring the game in 2022. Both words should count as 'used' when building the remaining-candidate pool, which the set-difference above already does correctly.
+
+Words that appear on more than one distinct date in this history: 25 ['cigar', 'stand', 'clock', 'sandy', 'squad', 'break', 'linen', 'trace', 'forth', 'ivory']
+  -> Worth a sentence in the report: either the source list mixes the pre-NYT and NYT eras with an accidental repeat, or these are genuine reruns. Either way, for the remaining-candidate pool a word only needs to be excluded once, so this doesn't change the set-difference result — but it's a fact worth citing since a reader may otherwise assume the history has zero repeats.
+
+======================================================================
+7. FILES WRITTEN
+======================================================================
+  C:\Users\ASUS\projects\wordleSolver\cleaned\__pycache__
+  C:\Users\ASUS\projects\wordleSolver\cleaned\demo_benchmark.py
+  C:\Users\ASUS\projects\wordleSolver\cleaned\eda_summary.txt
+  C:\Users\ASUS\projects\wordleSolver\cleaned\full_guess_vocab.txt
+  C:\Users\ASUS\projects\wordleSolver\cleaned\letter_freq_overall.csv
+  C:\Users\ASUS\projects\wordleSolver\cleaned\letter_freq_positional.csv
+  C:\Users\ASUS\projects\wordleSolver\cleaned\past_answers_clean.csv
+  C:\Users\ASUS\projects\wordleSolver\cleaned\remaining_candidates.txt
+  C:\Users\ASUS\projects\wordleSolver\cleaned\solver_comparison.csv
+  C:\Users\ASUS\projects\wordleSolver\cleaned\wordle_engine.py
+
+Figures written to: C:\Users\ASUS\projects\wordleSolver\figures

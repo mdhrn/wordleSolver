@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>WordleSolver</title>
+<style>
+  :root {
+    --bg:#fff; --ink:#1a1a1a; --sub:#555; --line:#e2e2e5; --accent:#6aaa64;
+    --green:#6aaa64; --yellow:#c9b458; --gray:#787c7e;
+    box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --bg:#151617; --ink:#eee; --sub:#aaa; --line:#333; }
+  }
+  :root[data-theme="dark"] { --bg:#151617; --ink:#eee; --sub:#aaa; --line:#333; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font-family:-apple-system,Segoe UI,Roboto,sans-serif;
+         max-width:760px; margin:0 auto; padding:24px 16px 60px; }
+  h1 { font-size:38px; text-align:center; margin:0 0 18px; letter-spacing:.5px; }
+  h1 span { color:var(--accent); }
+  p.intro { color:var(--sub); font-size:14px; line-height:1.5; text-align:center; max-width:520px; margin:0 auto 20px; }
+  .openers { text-align:center; margin-bottom:26px; }
+  .openers h3 { font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--sub); margin-bottom:8px; }
+  .opener-list a { display:block; color:#3355cc; text-decoration:underline; cursor:pointer; font-size:14px; margin:2px 0; }
+  .opener-list a b { color:inherit; }
+  .row { display:flex; justify-content:center; gap:6px; margin:14px 0 6px; }
+  .tile { width:52px; height:52px; border:2px solid var(--line); border-radius:4px; display:flex; align-items:center;
+          justify-content:center; font-size:26px; font-weight:700; color:#fff; cursor:pointer; user-select:none;
+          text-transform:uppercase; transition:background .1s; }
+  .tile.g0 { background:var(--gray); border-color:var(--gray); }
+  .tile.g1 { background:var(--yellow); border-color:var(--yellow); }
+  .tile.g2 { background:var(--green); border-color:var(--green); }
+  .row-actions { text-align:center; margin-bottom:8px; }
+  .row-actions button { font:inherit; padding:6px 14px; border-radius:6px; border:1px solid var(--line);
+                         background:var(--accent); color:#fff; font-weight:600; cursor:pointer; }
+  .row-actions button.secondary { background:transparent; color:var(--sub); }
+  .stats { text-align:center; color:var(--sub); font-size:13px; margin-bottom:22px; }
+  .history { text-align:center; font-size:12px; color:var(--sub); margin-bottom:10px; }
+  table#wordTable { width:100%; border-collapse:collapse; font-size:13px; margin-top:6px; }
+  table#wordTable th { text-align:left; padding:6px 8px; border-bottom:1px solid var(--line); cursor:pointer;
+                        color:var(--sub); font-weight:600; position:sticky; top:0; background:var(--bg); }
+  table#wordTable td { padding:5px 8px; border-bottom:1px solid var(--line); }
+  table#wordTable tr.dead td { color:var(--sub); opacity:.5; }
+  table#wordTable tr.rec td { font-weight:700; }
+  .tablewrap { max-height:420px; overflow-y:auto; border:1px solid var(--line); border-radius:8px; }
+  .bar { display:inline-block; height:8px; background:var(--accent); border-radius:2px; vertical-align:middle; margin-right:6px; }
+  footer { text-align:center; color:var(--sub); font-size:11px; margin-top:26px; }
+</style>
+</head>
+<body>
+
+<h1>WORDLE<span>Solver</span></h1>
+<p class="intro">Click a starting guess below, then click each letter to cycle its color to match your real Wordle
+  result (gray → yellow → green). I'll recommend the next guess and rank every remaining word by expected
+  information (entropy) and how likely it is to be the answer (likeliness, from real word-frequency data).</p>
+
+<div class="openers">
+  <h3>Best openers — our greedy-entropy solver, 473-word remaining-candidate pool</h3>
+  <div class="opener-list" id="openerList"></div>
+</div>
+
+<div id="game"></div>
+
+<div class="stats" id="stats"></div>
+<div class="history" id="history"></div>
+
+<div class="tablewrap">
+  <table id="wordTable">
+    <thead><tr><th data-key="word">word</th><th data-key="entropy">entropy (bits)</th><th data-key="likeliness">likeliness</th></tr></thead>
+    <tbody id="wordTableBody"></tbody>
+  </table>
+</div>
+
+<footer>
+  Runs entirely in your browser · guess pool = the 473-word remaining-candidate pool (past NYT answers already
+  excluded) · endgame-exact search takes over once ≤8 candidates remain · likeliness = real English word frequency
+  (wordfreq), renormalized over the words still consistent with your results.
+</footer>
+
+<script>
+"use strict";
+const CANDIDATES = ["abled","abode","abort","abuse","adorn","afire","afoul","aider","algae","allay","amity","anime","annul","aping","apnea","arena","armor","arose","array","arson","augur","aunty","axial","axion","baggy","basal","beech","began","begat","berry","betel","bezel","bible","biddy","bigot","billy","bingo","bison","bitty","bless","blitz","bloat","bluer","bobby","boney","bosom","botch","boule","bound","bowel","brawl","brick","brunt","bused","bushy","buxom","cabal","cabby","cabin","caddy","cagey","cairn","caput","caste","cavil","chaff","chess","chick","china","claim","clank","cleat","clout","clued","cobra","color","comic","copse","cough","coupe","covey","crack","creek","creep","creme","cress","crick","cried","crier","crony","croup","crump","curvy","cutie","daily","dairy","debar","deign","derby","dilly","dimly","diode","dirty","ditch","downy","drank","drawl","dress","dried","drier","droit","dross","drown","druid","dully","dumpy","dunce","dying","eater","eclat","eking","elect","elegy","elide","enemy","erect","ester","evict","eying","fairy","fanny","fatal","fatty","fauna","fecal","fella","felon","femme","femur","fetal","fibre","ficus","fight","filer","filmy","filth","flack","fleck","fleet","flier","fluid","flush","fraud","freed","freer","friar","frisk","fudge","furor","furry","fussy","gaffe","gaily","gassy","gayer","gayly","gazer","geeky","gipsy","girly","giver","godly","golly","gonad","gourd","graze","grope","grunt","guilt","gulch","gusto","gypsy","harem","harpy","haute","hedge","hippy","honor","horny","hotly","humus","husky","hussy","hydro","hymen","icily","idiot","idyll","iliac","imply","ingot","jetty","juicy","junta","junto","juror","kappa","kinky","kitty","kneed","leant","leper","liege","lipid","loamy","login","lumen","lupus","lurch","lymph","lynch","lyric","macro","mamma","mammy","mange","mangy","meaty","mecca","melee","milky","minim","minor","missy","mocha","moody","moron","mower","mucus","muddy","musky","newer","ninny","noose","nosey","nutty","oaken","obese","octal","odder","ombre","opium","optic","outgo","ovary","ovine","ovoid","owing","paddy","pagan","paler","palsy","pansy","parse","paste","pasty","payee","payer","pence","penny","pesto","piggy","pivot","plied","plier","plush","poesy","pooch","pouch","pried","pubic","pudgy","pulse","punch","pupal","puree","purer","pushy","pygmy","quasi","quoth","rabbi","radar","radii","rajah","rally","ralph","randy","rarer","raspy","raven","razor","rearm","rebar","recut","reedy","refit","reign","renal","reset","rifle","rigor","ripen","risky","river","roast","roger","rotor","rumor","sadly","safer","salon","salve","salvo","saner","sappy","satyr","sauce","savoy","scalp","scaly","scamp","scary","scion","scree","screw","scuba","seize","semen","setup","sewer","shack","shady","shale","shalt","shark","sheen","sheer","sheik","shied","shiny","shirt","shock","shook","shoot","shrew","sieve","sigma","silky","sinew","sixty","skulk","slack","slain","slant","slash","slave","sleet","slept","slide","slimy","slink","sloop","slunk","slurp","slyly","smack","smoky","smote","sneer","sniff","snuck","snuff","soapy","sooth","sooty","spank","spawn","sperm","spied","spiky","spilt","spook","spree","spunk","spurn","squib","stalk","stave","steal","steer","stoop","stuck","stunk","suing","swarm","swash","swear","swept","swift","swore","synod","taint","taker","tamer","tango","tarot","tatty","tenet","tense","tepee","terra","thong","tight","timid","tonal","tonga","torus","tramp","tread","tried","truce","truer","trump","trunk","tubal","tulle","tumor","twixt","tying","unset","unwed","urine","utile","valor","vapor","vaunt","verso","vicar","vigil","viper","virus","vista","vomit","waive","warty","welch","welsh","wench","wider","widow","wight","willy","winch","woody","wooly","woozy","worth","wrack","wrest","wring","wryly","zonal"];
+const WEIGHTS = {"abled":0.0011,"abode":0.0079,"abort":0.011,"abuse":0.2692,"adorn":0.006,"afire":0.0017,"afoul":0.0025,"aider":0.0005,"algae":0.0204,"allay":0.0029,"amity":0.0046,"anime":0.1072,"annul":0.0018,"aping":0.0007,"apnea":0.0059,"arena":0.1259,"armor":0.055,"arose":0.0316,"array":0.0741,"arson":0.0148,"augur":0.0018,"aunty":0.0085,"axial":0.0083,"axion":0.0005,"baggy":0.0085,"basal":0.0148,"beech":0.011,"began":0.6918,"begat":0.0015,"berry":0.055,"betel":0.002,"bezel":0.0037,"bible":0.2042,"biddy":0.0014,"bigot":0.0089,"billy":0.1259,"bingo":0.0302,"bison":0.0107,"bitty":0.0036,"bless":0.0871,"blitz":0.0219,"bloat":0.0023,"bluer":0.001,"bobby":0.0977,"boney":0.0019,"bosom":0.0066,"botch":0.0015,"boule":0.0008,"bound":0.1698,"bowel":0.0209,"brawl":0.02,"brick":0.1047,"brunt":0.0078,"bused":0.0008,"bushy":0.0056,"buxom":0.0014,"cabal":0.0065,"cabby":0.0005,"cabin":0.0794,"caddy":0.0054,"cagey":0.0014,"cairn":0.0044,"caput":0.0007,"caste":0.0234,"cavil":0.0006,"chaff":0.0033,"chess":0.0513,"chick":0.0708,"china":0.7413,"claim":0.5248,"clank":0.0027,"cleat":0.0014,"clout":0.01,"clued":0.0015,"cobra":0.0191,"color":0.4786,"comic":0.1549,"copse":0.0013,"cough":0.0525,"coupe":0.0129,"covey":0.0024,"crack":0.1514,"creek":0.138,"creep":0.0407,"creme":0.0078,"cress":0.0018,"crick":0.0037,"cried":0.0912,"crier":0.0015,"crony":0.0032,"croup":0.001,"crump":0.0033,"curvy":0.0083,"cutie":0.0123,"daily":0.6918,"dairy":0.0724,"debar":0.0005,"deign":0.0011,"derby":0.0741,"dilly":0.0026,"dimly":0.0036,"diode":0.0068,"dirty":0.2089,"ditch":0.0468,"downy":0.0023,"drank":0.0525,"drawl":0.0018,"dress":0.3388,"dried":0.0646,"drier":0.0091,"droit":0.0019,"dross":0.0014,"drown":0.0282,"druid":0.0058,"dully":0.0004,"dumpy":0.0012,"dunce":0.0019,"dying":0.2512,"eater":0.0155,"eclat":0.0003,"eking":0.0005,"elect":0.0631,"elegy":0.003,"elide":0.0003,"enemy":0.2951,"erect":0.0195,"ester":0.0068,"evict":0.0055,"eying":0.0008,"fairy":0.0708,"fanny":0.0174,"fatal":0.0741,"fatty":0.0372,"fauna":0.0195,"fecal":0.006,"fella":0.0182,"felon":0.0087,"femme":0.0091,"femur":0.0059,"fetal":0.0148,"fibre":0.0275,"ficus":0.0015,"fight":1.0,"filer":0.0017,"filmy":0.0008,"filth":0.0151,"flack":0.0052,"fleck":0.0022,"fleet":0.1259,"flier":0.0049,"fluid":0.0977,"flush":0.0372,"fraud":0.138,"freed":0.0417,"freer":0.0058,"friar":0.0065,"frisk":0.0049,"fudge":0.0126,"furor":0.0019,"furry":0.0214,"fussy":0.0065,"gaffe":0.0027,"gaily":0.0009,"gassy":0.0014,"gayer":0.0014,"gayly":0.0001,"gazer":0.0005,"geeky":0.0051,"gipsy":0.0026,"girly":0.01,"giver":0.0093,"godly":0.0107,"golly":0.003,"gonad":0.0004,"gourd":0.0039,"graze":0.0062,"grope":0.0028,"grunt":0.0083,"guilt":0.0794,"gulch":0.0035,"gusto":0.0059,"gypsy":0.0209,"harem":0.0079,"harpy":0.0019,"haute":0.0093,"hedge":0.0324,"hippy":0.0059,"honor":0.2884,"horny":0.0363,"hotly":0.005,"humus":0.0014,"husky":0.0115,"hussy":0.0009,"hydro":0.0251,"hymen":0.0022,"icily":0.0003,"idiot":0.1445,"idyll":0.0016,"iliac":0.0013,"imply":0.0398,"ingot":0.0014,"jetty":0.0065,"juicy":0.0295,"junta":0.0129,"junto":0.0004,"juror":0.0079,"kappa":0.017,"kinky":0.0138,"kitty":0.0562,"kneed":0.0016,"leant":0.0016,"leper":0.0036,"liege":0.0052,"lipid":0.0115,"loamy":0.001,"login":0.0182,"lumen":0.0072,"lupus":0.0093,"lurch":0.0036,"lymph":0.0093,"lynch":0.0513,"lyric":0.0251,"macro":0.0302,"mamma":0.0123,"mammy":0.0025,"mange":0.0019,"mangy":0.0007,"meaty":0.006,"mecca":0.0141,"melee":0.0098,"milky":0.0186,"minim":0.0006,"minor":0.2455,"missy":0.0107,"mocha":0.0056,"moody":0.0295,"moron":0.0331,"mower":0.0074,"mucus":0.0083,"muddy":0.0234,"musky":0.0016,"newer":0.0513,"ninny":0.0005,"noose":0.0056,"nosey":0.0021,"nutty":0.0091,"oaken":0.0005,"obese":0.0282,"octal":0.0008,"odder":0.0007,"ombre":0.0023,"opium":0.017,"optic":0.0263,"outgo":0.0001,"ovary":0.0051,"ovine":0.0003,"ovoid":0.0015,"owing":0.0316,"paddy":0.0245,"pagan":0.0214,"paler":0.0044,"palsy":0.0093,"pansy":0.0035,"parse":0.0056,"paste":0.0479,"pasty":0.0045,"payee":0.0011,"payer":0.0098,"pence":0.0269,"penny":0.0692,"pesto":0.0045,"piggy":0.0117,"pivot":0.0186,"plied":0.0021,"plier":0.0003,"plush":0.0126,"poesy":0.0003,"pooch":0.0055,"pouch":0.0158,"pried":0.0014,"pubic":0.0069,"pudgy":0.0017,"pulse":0.0676,"punch":0.123,"pupal":0.0008,"puree":0.0044,"purer":0.002,"pushy":0.0059,"pygmy":0.0031,"quasi":0.0182,"quoth":0.0007,"rabbi":0.0288,"radar":0.0933,"radii":0.0021,"rajah":0.0026,"rally":0.1288,"ralph":0.0741,"randy":0.049,"rarer":0.0066,"raspy":0.0026,"raven":0.0363,"razor":0.0309,"rearm":0.0008,"rebar":0.0022,"recut":0.0008,"reedy":0.0021,"refit":0.0028,"reign":0.0692,"renal":0.0162,"reset":0.0398,"rifle":0.0891,"rigor":0.0069,"ripen":0.0026,"risky":0.0513,"river":0.631,"roast":0.0437,"roger":0.1445,"rotor":0.0155,"rumor":0.0316,"sadly":0.0891,"safer":0.0724,"salon":0.0437,"salve":0.0038,"salvo":0.0043,"saner":0.001,"sappy":0.0028,"satyr":0.0017,"sauce":0.1175,"savoy":0.0072,"scalp":0.0178,"scaly":0.0038,"scamp":0.0012,"scary":0.138,"scion":0.0063,"scree":0.0012,"screw":0.1047,"scuba":0.012,"seize":0.0372,"semen":0.0141,"setup":0.0724,"sewer":0.0257,"shack":0.0158,"shady":0.0302,"shale":0.0288,"shalt":0.0129,"shark":0.0741,"sheen":0.0129,"sheer":0.0603,"sheik":0.0074,"shied":0.0019,"shiny":0.0447,"shirt":0.2512,"shock":0.1698,"shook":0.0661,"shoot":0.3162,"shrew":0.0033,"sieve":0.0059,"sigma":0.0191,"silky":0.0107,"sinew":0.0013,"sixty":0.0501,"skulk":0.0005,"slack":0.0302,"slain":0.0204,"slant":0.0089,"slash":0.0263,"slave":0.1202,"sleet":0.004,"slept":0.0891,"slide":0.1175,"slimy":0.0071,"slink":0.0014,"sloop":0.0037,"slunk":0.0005,"slurp":0.0021,"slyly":0.0017,"smack":0.0257,"smoky":0.0126,"smote":0.0012,"sneer":0.003,"sniff":0.0162,"snuck":0.011,"snuff":0.0083,"soapy":0.0033,"sooth":0.0014,"sooty":0.0019,"spank":0.0071,"spawn":0.0141,"sperm":0.0407,"spied":0.0071,"spiky":0.0033,"spilt":0.0048,"spook":0.0045,"spree":0.0214,"spunk":0.0027,"spurn":0.0013,"squib":0.0011,"stalk":0.017,"stave":0.0065,"steal":0.1514,"steer":0.0309,"stoop":0.0081,"stuck":0.2818,"stunk":0.0014,"suing":0.0186,"swarm":0.0162,"swash":0.001,"swear":0.1905,"swept":0.0513,"swift":0.0832,"swore":0.02,"synod":0.0123,"taint":0.0056,"taker":0.01,"tamer":0.0032,"tango":0.0224,"tarot":0.0078,"tatty":0.0009,"tenet":0.0059,"tense":0.0525,"tepee":0.0006,"terra":0.0162,"thong":0.0085,"tight":0.2188,"timid":0.0105,"tonal":0.0072,"tonga":0.0074,"torus":0.0022,"tramp":0.0095,"tread":0.0195,"tried":0.8511,"truce":0.0195,"truer":0.0055,"trump":0.5012,"trunk":0.0631,"tubal":0.0021,"tulle":0.0025,"tumor":0.055,"twixt":0.0007,"tying":0.0282,"unset":0.0004,"unwed":0.0019,"urine":0.0407,"utile":0.0003,"valor":0.01,"vapor":0.0214,"vaunt":0.0001,"verso":0.0031,"vicar":0.0138,"vigil":0.0102,"viper":0.012,"virus":0.1549,"vista":0.0302,"vomit":0.02,"waive":0.0102,"warty":0.0007,"welch":0.0138,"welsh":0.0832,"wench":0.0028,"wider":0.1023,"widow":0.0708,"wight":0.01,"willy":0.024,"winch":0.0065,"woody":0.0389,"wooly":0.0018,"woozy":0.0015,"worth":0.8511,"wrack":0.001,"wrest":0.0025,"wring":0.0033,"wryly":0.0015,"zonal":0.0032};
+const ENDGAME_THRESHOLD = 8;
+const OPENERS = [
+  ["saner", 2.9577], ["parse", 2.9915], ["roast", 3.0021], ["caste", 3.0063], ["arose", 3.0148],
+];
+
+// ---------- core engine (feedback / partition / entropy / posterior) ----------
+function feedback(guess, secret) {
+  const g = guess.split(""), s = secret.split(""), colors=[0,0,0,0,0], pool=s.slice();
+  for (let i=0;i<5;i++) if (g[i]===s[i]) { colors[i]=2; pool[i]=null; }
+  for (let i=0;i<5;i++) { if (colors[i]===2) continue; const idx=pool.indexOf(g[i]); if (idx!==-1){colors[i]=1; pool[idx]=null;} }
+  return colors.join("");
+}
+function partition(guess, cands) {
+  const b = new Map();
+  for (const w of cands) { const p = feedback(guess, w); if(!b.has(p)) b.set(p,[]); b.get(p).push(w); }
+  return b;
+}
+function entropyOf(guess, cands) {
+  const b = partition(guess, cands), n = cands.length; let h=0;
+  for (const bucket of b.values()) { const p=bucket.length/n; h -= p*Math.log2(p); }
+  return h;
+}
+function posterior(cands) {
+  let total=0; for (const w of cands) total += (WEIGHTS[w]||0.001);
+  const post={}; for (const w of cands) post[w]=(WEIGHTS[w]||0.001)/total;
+  return post;
+}
+
+// ---------- solvers ----------
+const exactMemo = new Map();
+const keyOf = s => s.slice().sort().join(",");
+function endgameExact(cands, opts) {
+  const key = keyOf(cands);
+  if (exactMemo.has(key)) return exactMemo.get(key);
+  const n = cands.length;
+  if (n===1) { const r=[cands[0],1]; exactMemo.set(key,r); return r; }
+  let bestG=null, bestC=Infinity;
+  for (const g of opts) {
+    const buckets = partition(g, cands);
+    if (buckets.size===1) continue;
+    let cost=1;
+    for (const bucket of buckets.values()) {
+      if (bucket.length===1 && bucket[0]===g) continue;
+      const [,sub] = endgameExact(bucket, opts);
+      cost += (bucket.length/n)*sub;
+    }
+    if (cost<bestC) { bestC=cost; bestG=g; }
+  }
+  const r=[bestG,bestC]; exactMemo.set(key,r); return r;
+}
+function chooseNext(cands) {
+  if (cands.length===1) return { guess: cands[0], mode:"solved" };
+  if (cands.length<=ENDGAME_THRESHOLD) { const [g]=endgameExact(cands, cands); return { guess:g, mode:"exact" }; }
+  let best=null, bestScore=-1;
+  for (const g of CANDIDATES) {
+    const s = entropyOf(g, cands);
+    if (s>bestScore || (s===bestScore && cands.includes(g) && !cands.includes(best))) { best=g; bestScore=s; }
+  }
+  return { guess:best, mode:"greedy" };
+}
+
+// ---------- state ----------
+let candidates = CANDIDATES.slice();
+let currentGuess = null;
+let tileColors = [0,0,0,0,0];
+let historyList = [];
+
+function renderOpeners() {
+  const el = document.getElementById("openerList");
+  el.innerHTML = OPENERS.map(([w,avg]) =>
+    `<a data-word="${w}"><b>${w.toUpperCase()}</b> — ${avg.toFixed(2)} avg. guesses</a>`).join("");
+  el.querySelectorAll("a").forEach(a => a.addEventListener("click", () => startGame(a.dataset.word)));
+}
+
+function startGame(word) {
+  candidates = CANDIDATES.slice();
+  currentGuess = word; tileColors=[0,0,0,0,0]; historyList=[];
+  renderGame(); renderStats(); renderTable();
+}
+
+function renderGame() {
+  const el = document.getElementById("game");
+  const tiles = currentGuess.split("").map((ch,i) =>
+    `<div class="tile g${tileColors[i]}" data-i="${i}">${ch}</div>`).join("");
+  el.innerHTML = `<div class="row">${tiles}</div>
+    <div class="row-actions">
+      <button id="submitBtn">Submit result</button>
+      <button id="resetBtn" class="secondary">Start over</button>
+    </div>`;
+  el.querySelectorAll(".tile").forEach(t => t.addEventListener("click", () => {
+    const i = +t.dataset.i; tileColors[i] = (tileColors[i]+1)%3; renderGame();
+  }));
+  document.getElementById("submitBtn").addEventListener("click", submitResult);
+  document.getElementById("resetBtn").addEventListener("click", () => { document.getElementById("game").innerHTML=""; document.getElementById("stats").textContent=""; document.getElementById("history").textContent=""; document.getElementById("wordTableBody").innerHTML=""; });
+}
+
+function submitResult() {
+  const pattern = tileColors.join("");
+  historyList.push(currentGuess.toUpperCase() + " → " + pattern.split("").map(c=>"⬛🟨🟩"[c]).join(""));
+  candidates = candidates.filter(w => feedback(currentGuess, w) === pattern);
+  if (candidates.length === 0) {
+    document.getElementById("stats").textContent = "No remaining word matches that result — check the colors you set.";
+    return;
+  }
+  if (pattern === "22222" || candidates.length === 1 && candidates[0] === currentGuess) {
+    historyList.push("Solved: " + currentGuess.toUpperCase());
+    document.getElementById("history").innerHTML = historyList.join(" · ");
+    document.getElementById("stats").textContent = "Solved in " + historyList.filter(h=>h.includes("→")).length + " guesses.";
+    renderTable();
+    return;
+  }
+  const { guess, mode } = chooseNext(candidates);
+  currentGuess = guess; tileColors = [0,0,0,0,0];
+  renderGame(); renderStats(mode); renderTable();
+  document.getElementById("history").innerHTML = historyList.join(" · ");
+}
+
+function renderStats(mode) {
+  const buckets = currentGuess ? partition(currentGuess, candidates).size : 0;
+  const bits = currentGuess ? entropyOf(currentGuess, candidates).toFixed(3) : "0";
+  const tag = mode==="exact" ? "endgame-exact search" : mode==="solved" ? "only candidate left" : "greedy entropy";
+  document.getElementById("stats").textContent =
+    `${candidates.length} word(s) remain · ${buckets} possible colorings for "${currentGuess}" · ${bits} bits · mode: ${tag}`;
+}
+
+function renderTable() {
+  const post = posterior(candidates);
+  const rows = CANDIDATES.map(w => ({
+    word: w,
+    entropy: entropyOf(w, candidates),
+    likeliness: candidates.includes(w) ? post[w] : 0,
+    alive: candidates.includes(w),
+  }));
+  renderTableRows(rows, "entropy", true);
+}
+
+let sortState = { key: "entropy", desc: true };
+function renderTableRows(rows, key, desc) {
+  sortState = { key, desc };
+  rows.sort((a,b) => desc ? b[key]-a[key] : a[key]-b[key]);
+  const maxLikeliness = Math.max(...rows.map(r=>r.likeliness), 0.0001);
+  const body = document.getElementById("wordTableBody");
+  body.innerHTML = rows.map(r => {
+    const barWidth = Math.round((r.likeliness/maxLikeliness)*60);
+    return `<tr class="${r.alive?'':'dead'} ${r.word===currentGuess?'rec':''}">
+      <td>${r.word}</td>
+      <td>${r.entropy.toFixed(3)}</td>
+      <td><span class="bar" style="width:${barWidth}px"></span>${(r.likeliness*100).toFixed(2)}%</td>
+    </tr>`;
+  }).join("");
+  window._lastRows = rows;
+}
+
+document.querySelectorAll("#wordTable th").forEach(th => {
+  th.addEventListener("click", () => {
+    const key = th.dataset.key;
+    const desc = sortState.key===key ? !sortState.desc : true;
+    if (window._lastRows) renderTableRows(window._lastRows, key, desc);
+  });
+});
+
+renderOpeners();
+</script>
+</body>
+</html>
